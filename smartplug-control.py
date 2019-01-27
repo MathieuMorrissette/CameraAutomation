@@ -5,6 +5,8 @@ import re
 import datetime
 import subprocess
 
+is_windows = False
+
 def writelog(string):
 	now = datetime.datetime.now()
 	with open('camera_log.txt', 'a') as logfile: # a == append
@@ -30,10 +32,15 @@ print("Scanning hosts...")
 for host in hosts["hosts"]:
 	print(host["Name"] + "...")
 	# windows
-	nmap = subprocess.Popen(["ping",host["IP"], "-n", "1" ], stdout=subprocess.PIPE)
-	output = nmap.stdout.read().decode('utf-8')
+	if is_windows:
+		command = subprocess.Popen(["ping",host["IP"], "-n", "1" ], stdout=subprocess.PIPE)
+	else:
+		command = subprocess.Popen(["ping",host["IP"], "-c", "1" ], stdout=subprocess.PIPE)
 
-	if ("Reply from " + host["IP"]) not in output:
+	output = command.stdout.read().decode('utf-8')
+
+	if (("Reply from " + host["IP"]) not in output and is_windows) or \
+	    (("bytes from " + host["IP"]) not in output and not is_windows):
 		print("is DOWN")
 		continue
 	else:
