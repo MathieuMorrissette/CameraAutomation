@@ -25,6 +25,15 @@ hosts = {
 
 plug = SmartPlug("192.168.1.114")
 
+is_switch_online = False
+try:
+	switch_disabler = SmartPlug("192.168.1.142") # indoor cam disabler
+	print(switch_disabler.state_information)
+	is_switch_online = True
+except:
+	is_switch_online = False
+
+
 hostup = False
 
 print("Scanning hosts...")
@@ -57,16 +66,29 @@ for host in hosts["hosts"]:
 print("Current plug state :")
 print(plug.state)
 
-if hostup:
+if is_switch_online and switch_disabler.is_on: # do not record overriden
 	if plug.state == "ON":
 		plug.turn_off()
-		print("turning off plug...")
-		writelog("turning off plug")
+		print("turning off plug because switch is telling so...")
+		writelog("turning off plug because of switch disabler")
 else:
-	if plug.state == "OFF":
-		plug.turn_on()
-		print("turning on plug...")
-		writelog("turning on plug ")
+	if not is_switch_online and hostup: # should not happen but just in case electricity losse or something
+		if plug.state == "OFF":
+			plug.turn_on()
+			print("turning on plug because of unusual activity...")
+			writelog("turning on plug because of unusual activity")
+	elif hostup:
+		if plug.state == "ON": # do not record
+			plug.turn_off()
+			print("turning off plug...")
+			writelog("turning off plug")
+	else:
+		if plug.state == "OFF": # host isnt there start recording
+			plug.turn_on()
+			print("turning on plug...")
+			writelog("turning on plug ")
+
+print("Done")
 	
 	
 	
