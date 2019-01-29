@@ -22,8 +22,13 @@ hosts = {
 		}
 	]
 }
-
-plug = SmartPlug("192.168.1.114")
+try:
+	plug = SmartPlug("192.168.1.114")
+	print(plug.state_information)
+except:
+	print("Unexpected error plug is offline")
+	writelog("Unexpected error plug is offline")
+	exit(0)
 
 is_switch_online = False
 try:
@@ -63,8 +68,13 @@ for host in hosts["hosts"]:
 # https://www.bestbuy.ca/en-ca/product/tp-link-hs200-wi-fi-smart-light-switch/13044491.aspx
 
 
-print("Current plug state :")
-print(plug.state)
+print("Current states :")
+print("smartplug " + plug.state)
+if not is_switch_online:
+	print("switch disabler OFFLINE")
+else:
+	print("switch disabler " + switch_disabler.state)
+
 
 if is_switch_online and switch_disabler.is_on: # do not record overriden
 	if plug.state == "ON":
@@ -87,6 +97,12 @@ else:
 			plug.turn_on()
 			print("turning on plug...")
 			writelog("turning on plug ")
+print("Printing Final States :")
+print("smartplug " + plug.state)
+if not is_switch_online:
+	print("switch disabler OFFLINE")
+else:
+	print("switch disabler " + switch_disabler.state)
 
 print("Done")
 	
