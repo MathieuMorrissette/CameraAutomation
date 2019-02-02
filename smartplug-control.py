@@ -4,13 +4,33 @@ import time
 import re
 import datetime
 import subprocess
+from enum import Enum
 
 is_windows = False
+
+class State(Enum):
+	OFFLINE = 0
+	ON = 1
+	OFF = 2
 
 def writelog(string):
 	now = datetime.datetime.now()
 	with open('camera_log.txt', 'a') as logfile: # a == append
 		logfile.write(string + " - " + str(now) + "\n")
+
+# get tp link smart device state
+def getdevicestate(device):
+	try:
+		test = device.state_information
+		
+		if device.state == "ON":
+			return State.ON
+		else:
+			return State.OFF
+
+		return device.state
+	except:
+		return State.OFFLINE
 
 # you can add multiple hosts here
 hosts = {
@@ -22,21 +42,22 @@ hosts = {
 		}
 	]
 }
-try:
-	plug = SmartPlug("192.168.1.114")
-	print(plug.state_information)
-except:
+
+plug = SmartPlug("192.168.1.114")
+plug_state = getdevicestate(plug)
+
+if plug_state == State.OFFLINE:
 	print("Unexpected error plug is offline")
 	writelog("Unexpected error plug is offline")
 	exit(0)
 
-is_switch_online = False
-try:
-	switch_disabler = SmartPlug("192.168.1.142") # indoor cam disabler
-	print(switch_disabler.state_information)
-	is_switch_online = True
-except:
-	is_switch_online = False
+# disabler switch -> force disable the recording of the indoor cameras
+disabler_switch = SmartPlug("192.168.1.142")
+disabler_switch_state = getdevicestate(disabler_switch)
+
+# force record switch
+force_record_switch = SmartPlug("192.168.1.147") 
+force_record_switch_state = getdevicestate(force_record_switch)
 
 
 hostup = False
@@ -62,47 +83,45 @@ for host in hosts["hosts"]:
 		print("is UP")
 		break
 
-
-
-# TODO add overide with hidden smart switch for people without device ( backdoor ) - ordered
-# https://www.bestbuy.ca/en-ca/product/tp-link-hs200-wi-fi-smart-light-switch/13044491.aspx
-
-
 print("Current states :")
-print("smartplug " + plug.state)
-if not is_switch_online:
-	print("switch disabler OFFLINE")
-else:
-	print("switch disabler " + switch_disabler.state)
+print("smartplug " + plug_state.name)
+print("disabler switch " + disabler_switch_state.name)
+print("force record switch " + force_record_switch_state.name)
 
+if force_record_switch_state == State.ON:
+	if plug_state == State.OFF:
+		plug.turn_on()
+		print("turning on plug because of force record switch...")
+		writelog("turning on plug because of force record switch")
 
-if is_switch_online and switch_disabler.is_on: # do not record overriden
-	if plug.state == "ON":
+elif disabler_switch_state == State.ON:
+	if plug_state == State.ON:
 		plug.turn_off()
-		print("turning off plug because switch is telling so...")
-		writelog("turning off plug because of switch disabler")
+		print("turning off plug because of disabler switch...")
+		writelog("turning off plug because of disabler switch")
+
+elif disabler_switch_state == State.OFFLINE or force_record_switch_state == State.OFFLINE:
+	if plug_state == State.OFF:
+		plug.turn_on()
+		print("turning on plug because of unusual activity...")
+		writelog("turning on plug because of unusual activity disabler: ")
+
+elif hostup:
+	if plug_state == State.ON: 
+		plug.turn_off()
+		print("turning off plug host is present...")
+		writelog("turning off plug host is present")
+
 else:
-	if not is_switch_online and hostup: # should not happen but just in case electricity losse or something
-		if plug.state == "OFF":
-			plug.turn_on()
-			print("turning on plug because of unusual activity...")
-			writelog("turning on plug because of unusual activity")
-	elif hostup:
-		if plug.state == "ON": # do not record
-			plug.turn_off()
-			print("turning off plug...")
-			writelog("turning off plug")
-	else:
-		if plug.state == "OFF": # host isnt there start recording
-			plug.turn_on()
-			print("turning on plug...")
-			writelog("turning on plug ")
+	if plug_state == State.OFF: 
+		plug.turn_on()
+		print("turning on plug host is away...")
+		writelog("turning on plug is away")
+			
 print("Printing Final States :")
-print("smartplug " + plug.state)
-if not is_switch_online:
-	print("switch disabler OFFLINE")
-else:
-	print("switch disabler " + switch_disabler.state)
+print("smartplug " + plug_state.name)
+print("disabler switch " + disabler_switch_state.name)
+print("force record switch " + force_record_switch_state.name)
 
 print("Done")
 	
