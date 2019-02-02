@@ -5,6 +5,7 @@ import re
 import datetime
 import subprocess
 from enum import Enum
+import os
 
 is_windows = False
 
@@ -15,7 +16,7 @@ class State(Enum):
 
 def writelog(string):
 	now = datetime.datetime.now()
-	with open('camera_log.txt', 'a') as logfile: # a == append
+	with open(os.path.expanduser('~/camera_log.txt'), 'a') as logfile: # a == append
 		logfile.write(string + " - " + str(now) + "\n")
 
 # get tp link smart device state
