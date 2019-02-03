@@ -55,9 +55,9 @@ def gethoststate():
 		print(host["Name"] + "...")
 		# windows
 		if is_windows:
-			command = subprocess.Popen(["ping",host["IP"], "-n", "1" ], stdout=subprocess.PIPE)
+			command = subprocess.Popen(["ping",host["IP"], "-n", "4" ], stdout=subprocess.PIPE)
 		else:
-			command = subprocess.Popen(["ping",host["IP"], "-c", "1" ], stdout=subprocess.PIPE)
+			command = subprocess.Popen(["ping",host["IP"], "-c", "4" ], stdout=subprocess.PIPE)
 
 		output = command.stdout.read().decode('utf-8')
 
@@ -67,7 +67,6 @@ def gethoststate():
 			continue
 		else:
 			return HostState.ONLINE
-			print("is UP")
 			break
 
 	return HostState.AWAY
