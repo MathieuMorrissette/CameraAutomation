@@ -90,10 +90,15 @@ force_record_switch_state = getdevicestate(force_record_switch)
 
 host_state = gethoststate()
 
+max_retry = 4
+retry_count = 0
+
 # sometimes device doesnt respond so making really sure it is really away
-if host_state == HostState.AWAY:
+while host_state == HostState.AWAY and retry_count < max_retry:
 	time.sleep(10) # sleep 10 seconds
 	host_state = gethoststate()
+	retry_count = retry_count + 1
+
 
 print("Current states :")
 print("host " + host_state.name)
