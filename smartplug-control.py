@@ -14,6 +14,10 @@ class State(Enum):
 	ON = 1
 	OFF = 2
 
+class HostState(Enum):
+	AWAY = 0
+	ONLINE = 1
+
 def writelog(string):
 	now = datetime.datetime.now()
 	with open(os.path.expanduser('~/camera_log.txt'), 'a') as logfile: # a == append
@@ -33,16 +37,40 @@ def getdevicestate(device):
 	except:
 		return State.OFFLINE
 
-# you can add multiple hosts here
-hosts = {
-	"hosts" : [
-		{
-			"Name" : "mathmo_phone",
-			"MAC" : "",
-			"IP" : "192.168.1.108" # must be static
-		}
-	]
-}
+def gethoststate():
+	# you can add multiple hosts here
+	hosts = {
+		"hosts" : [
+			{
+				"Name" : "mathmo_phone",
+				"MAC" : "",
+				"IP" : "192.168.1.108" # must be static
+			}
+		]
+	}
+
+	print("Scanning hosts...")
+
+	for host in hosts["hosts"]:
+		print(host["Name"] + "...")
+		# windows
+		if is_windows:
+			command = subprocess.Popen(["ping",host["IP"], "-n", "1" ], stdout=subprocess.PIPE)
+		else:
+			command = subprocess.Popen(["ping",host["IP"], "-c", "1" ], stdout=subprocess.PIPE)
+
+		output = command.stdout.read().decode('utf-8')
+
+		if (("Reply from " + host["IP"]) not in output and is_windows) or \
+			(("bytes from " + host["IP"]) not in output and not is_windows):
+			print("is DOWN")
+			continue
+		else:
+			return HostState.ONLINE
+			print("is UP")
+			break
+
+	return HostState.AWAY
 
 plug = SmartPlug("192.168.1.114")
 plug_state = getdevicestate(plug)
@@ -60,31 +88,15 @@ disabler_switch_state = getdevicestate(disabler_switch)
 force_record_switch = SmartPlug("192.168.1.147") 
 force_record_switch_state = getdevicestate(force_record_switch)
 
+host_state = gethoststate()
 
-hostup = False
-
-print("Scanning hosts...")
-
-for host in hosts["hosts"]:
-	print(host["Name"] + "...")
-	# windows
-	if is_windows:
-		command = subprocess.Popen(["ping",host["IP"], "-n", "1" ], stdout=subprocess.PIPE)
-	else:
-		command = subprocess.Popen(["ping",host["IP"], "-c", "1" ], stdout=subprocess.PIPE)
-
-	output = command.stdout.read().decode('utf-8')
-
-	if (("Reply from " + host["IP"]) not in output and is_windows) or \
-	    (("bytes from " + host["IP"]) not in output and not is_windows):
-		print("is DOWN")
-		continue
-	else:
-		hostup = True
-		print("is UP")
-		break
+# sometimes device doesnt respond so making really sure it is really away
+if host_state == HostState.AWAY:
+	time.sleep(10) # sleep 10 seconds
+	host_state = gethoststate()
 
 print("Current states :")
+print("host " + host_state.name)
 print("smartplug " + plug_state.name)
 print("disabler switch " + disabler_switch_state.name)
 print("force record switch " + force_record_switch_state.name)
@@ -107,19 +119,20 @@ elif disabler_switch_state == State.OFFLINE or force_record_switch_state == Stat
 		print("turning on plug because of unusual activity...")
 		writelog("turning on plug because of unusual activity disabler: ")
 
-elif hostup:
+elif host_state == HostState.ONLINE:
 	if plug_state == State.ON: 
 		plug.turn_off()
-		print("turning off plug host is present...")
-		writelog("turning off plug host is present")
+		print("turning off plug because host is online...")
+		writelog("turning off plug because host is online")
 
 else:
 	if plug_state == State.OFF: 
 		plug.turn_on()
-		print("turning on plug host is away...")
-		writelog("turning on plug is away")
+		print("turning on plug because host is away...")
+		writelog("turning on plug because host is away")
 			
 print("Printing Final States :")
+print("host " + host_state.name)
 print("smartplug " + plug_state.name)
 print("disabler switch " + disabler_switch_state.name)
 print("force record switch " + force_record_switch_state.name)
