@@ -67,7 +67,6 @@ def gethoststate():
 			continue
 		else:
 			return HostState.ONLINE
-			break
 
 	return HostState.AWAY
 
@@ -94,7 +93,7 @@ retry_count = 0
 
 # sometimes device doesnt respond so making really sure it is really away
 while host_state == HostState.AWAY and retry_count < max_retry:
-	time.sleep(10) # sleep 10 seconds
+	time.sleep(5) # sleep 10 seconds
 	host_state = gethoststate()
 	retry_count = retry_count + 1
 
